@@ -5,6 +5,7 @@
 
 [Cocos论坛地址](http://forum.cocos.org/t/cocos-creator-scrollview-uisuperscrollview/99891)
 
+[CocosCreator2.x 旧版在这里](https://github.com/icipiqkm/UISuperScrollview)
 # 说明
 ---
     整个列表数据的增减刷新都是在使用层去处理的，组件不需要知道你的数据结构是什么
