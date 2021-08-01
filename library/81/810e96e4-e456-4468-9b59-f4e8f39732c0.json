@@ -1,0 +1,80 @@
+{
+  "__type__": "cc.EffectAsset",
+  "_name": "builtin-clear-stencil",
+  "_objFlags": 0,
+  "_native": "",
+  "techniques": [
+    {
+      "passes": [
+        {
+          "blendState": {
+            "targets": [
+              {
+                "blend": true
+              }
+            ]
+          },
+          "rasterizerState": {
+            "cullMode": 0
+          },
+          "program": "builtin-clear-stencil|sprite-vs:vert|sprite-fs:frag",
+          "depthStencilState": {
+            "depthTest": false,
+            "depthWrite": false
+          }
+        }
+      ]
+    }
+  ],
+  "shaders": [
+    {
+      "hash": 3507038093,
+      "glsl4": {
+        "vert": "\nprecision highp float;\nlayout(location = 0) in vec3 a_position;\nvec4 vert () {\n  vec4 pos = vec4(a_position, 1);\n  return pos;\n}\nvoid main() { gl_Position = vert(); }",
+        "frag": "\nprecision highp float;\nvec4 frag () {\n  vec4 o = vec4(1.0);\n  return o;\n}\nlayout(location = 0) out vec4 cc_FragColor;\nvoid main() { cc_FragColor = frag(); }"
+      },
+      "glsl3": {
+        "vert": "\nprecision highp float;\nin vec3 a_position;\nvec4 vert () {\n  vec4 pos = vec4(a_position, 1);\n  return pos;\n}\nvoid main() { gl_Position = vert(); }",
+        "frag": "\nprecision highp float;\nvec4 frag () {\n  vec4 o = vec4(1.0);\n  return o;\n}\nlayout(location = 0) out vec4 cc_FragColor;\nvoid main() { cc_FragColor = frag(); }"
+      },
+      "glsl1": {
+        "vert": "\nprecision highp float;\nattribute vec3 a_position;\nvec4 vert () {\n  vec4 pos = vec4(a_position, 1);\n  return pos;\n}\nvoid main() { gl_Position = vert(); }",
+        "frag": "\nprecision highp float;\nvec4 frag () {\n  vec4 o = vec4(1.0);\n  return o;\n}\nvoid main() { gl_FragColor = frag(); }"
+      },
+      "builtins": {
+        "globals": {
+          "blocks": [],
+          "samplerTextures": []
+        },
+        "locals": {
+          "blocks": [],
+          "samplerTextures": []
+        },
+        "statistics": {
+          "CC_EFFECT_USED_VERTEX_UNIFORM_VECTORS": 0,
+          "CC_EFFECT_USED_FRAGMENT_UNIFORM_VECTORS": 0
+        }
+      },
+      "defines": [],
+      "blocks": [],
+      "samplerTextures": [],
+      "attributes": [
+        {
+          "name": "a_position",
+          "type": 15,
+          "count": 1,
+          "defines": [],
+          "stageFlags": 1,
+          "format": 32,
+          "location": 0
+        }
+      ],
+      "varyings": [],
+      "name": "builtin-clear-stencil|sprite-vs:vert|sprite-fs:frag"
+    }
+  ],
+  "combinations": [
+    {}
+  ],
+  "hideInEditor": false
+}

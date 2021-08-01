@@ -1,0 +1,106 @@
+{
+  "__version__": "1.2.8",
+  "common": {
+    "outputName": "web-mobile",
+    "mainBundleCompressionType": "merge_dep",
+    "platform": "web-mobile"
+  },
+  "BuildTaskManager": {
+    "taskMap": {
+      "1627833668983": {
+        "id": "1627833668983",
+        "progress": 1,
+        "state": "success",
+        "message": "2021-8-1 20:12 Build success in 3105 ms!",
+        "options": {
+          "packages": {
+            "web-mobile": {
+              "orientation": "auto",
+              "polyfills": {
+                "asyncFunctions": true
+              }
+            },
+            "cocos-service": {
+              "configID": "9eca4e",
+              "services": []
+            }
+          },
+          "name": "super-scrollview",
+          "platform": "web-mobile",
+          "buildPath": "project://build",
+          "debug": false,
+          "md5Cache": false,
+          "sourceMaps": false,
+          "replaceSplashScreen": false,
+          "mainBundleCompressionType": "merge_dep",
+          "mainBundleIsRemote": false,
+          "mergeStartScene": false,
+          "experimentalEraseModules": false,
+          "compressTexture": true,
+          "packAutoAtlas": true,
+          "startScene": "d632b43c-2698-49f7-aadd-4bb08f9f189a",
+          "scenes": [
+            {
+              "url": "db://assets/scenes/main.scene",
+              "uuid": "d632b43c-2698-49f7-aadd-4bb08f9f189a",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/vertical/vertical-auto-center.scene",
+              "uuid": "fa64fa10-cf94-4140-b3b1-c5e52e34e88d",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/vertical/vertical-loop.scene",
+              "uuid": "b752f9a8-c9cb-45de-b4dd-9a7c0b8906f7",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/vertical/vertical-loop-grid.scene",
+              "uuid": "b567d910-611b-4b3c-9906-b676d2992233",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/vertical/vertical-refresh-load-grid.scene",
+              "uuid": "41250b95-8bc5-4b50-9298-d57736bc6f62",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/horizontal/horizontal-loop.scene",
+              "uuid": "f92c1cb8-5ae7-4287-aea2-ee456f375152",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/horizontal/horizontal-loop-grid.scene",
+              "uuid": "9fc8fe25-7fd3-481c-a6f3-47ce8874142c",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/vertical/vertical-refresh-load.scene",
+              "uuid": "324a4fd5-1faa-452d-abf7-204c4866d1a3",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/vertical/vertical-auto-center-grid.scene",
+              "uuid": "41b73afe-edc4-49c1-ab35-a0f626db4b75",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/horizontal/horizontal-auto-center.scene",
+              "uuid": "fc3d68bf-5526-44cc-adc0-82c9d4b41f26",
+              "inBundle": false
+            },
+            {
+              "url": "db://assets/scenes/horizontal/horizontal-auto-center-grid.scene",
+              "uuid": "051c4e18-1275-42de-9e37-580638774d36",
+              "inBundle": false
+            }
+          ],
+          "outputName": "web-mobile"
+        },
+        "time": "2021-8-1 20:12",
+        "dirty": false
+      }
+    }
+  }
+}

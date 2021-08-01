@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2015",
+    "module": "ES2015",
+    "strict": true,
+    "types": [
+      "./temp/declarations/cc.env",
+      "./temp/declarations/jsb",
+      "./temp/declarations/cc"
+    ],
+    "paths": {
+      "db://internal/*": [
+        "/Applications/CocosCreator/Creator/3.2.0/CocosCreator.app/Contents/Resources/resources/3d/engine/editor/assets/*"
+      ],
+      "db://assets/*": [
+        "/Users/stevejobs/Documents/GitHub/super-scrollview/assets/*"
+      ]
+    },
+    "experimentalDecorators": true,
+    "isolatedModules": true,
+    "moduleResolution": "node",
+    "noEmit": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
