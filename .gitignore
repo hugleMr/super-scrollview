@@ -5,4 +5,5 @@
 /temp
 /tsconfig.json
 /build
+.DS_Store
 
