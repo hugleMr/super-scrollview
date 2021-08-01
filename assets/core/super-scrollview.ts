@@ -136,7 +136,7 @@ export class SuperScrollview extends ScrollView {
         const deltaMove = clonedAutoScrollStartPosition.clone();
         deltaMove.subtract(this.getContentPosition());
         this._clampDelta(deltaMove);
-        /** 重写这个方法的主要原因是增加以下逻辑  功能用于自动居中 */
+        /** 重写这个方法的主要原因是插入以下逻辑  功能用于自动居中 其他并未改动 */
         if (this.layout.vertical && Math.abs(deltaMove.y) <= 2 && !this.isCallSoonFinish) {
             this.layout["soonFinish"]()
             this.isCallSoonFinish = true
@@ -235,7 +235,9 @@ export class SuperScrollview extends ScrollView {
         super._startAutoScroll(deltaMove, timeInSecond, attenuated)
     }
     protected _updateScrollBar(outOfBoundary: any) {
-        super._updateScrollBar(outOfBoundary)
+        super._updateScrollBar(new Vec2(outOfBoundary.x,outOfBoundary.y))
+        
+        // console.log(outOfBoundary.y)
         if (this._autoScrollBraking) return // 自动回弹时不计算 （非手动）
         if (!this._autoScrolling) return // 非自动滚动时不计算 
         if (!this.pullRefresh) return

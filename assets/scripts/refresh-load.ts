@@ -81,7 +81,7 @@ export class RefreshLoad extends BaseMain {
             label.string = ""
         }
         if (event.action) {
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 6; i++) {
                 this.datas.push({
                     message: `${this.datas.length}`
                 })

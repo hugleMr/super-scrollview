@@ -66,6 +66,7 @@ export class SuperLayout extends Component {
         tooltip: "自动居中时、Item的居中锚点",
         visible: function () { return (this as any).autoCenter }
     }) centerAnchor: Vec2 = new Vec2(.5, .5)
+    private isRestart: boolean = false
     /** 当前滚动方向 */
     private scrollDirection: ScrollDirection = ScrollDirection.NONE
     /** 是否垂直滚动 */
@@ -363,15 +364,15 @@ export class SuperLayout extends Component {
         let size = new Size(this.view.contentSize.width, this.view.contentSize.height)
         if (this.vertical) {
             if (this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM) {
-                size.height = this.headerBoundary + -this.footerBoundary + this.paddingTop + this.paddingBottom
+                size.height = this.headerBoundary + -this.footerBoundary
             } else {
-                size.height = this.footerBoundary + -this.headerBoundary + this.paddingTop + this.paddingBottom
+                size.height = this.footerBoundary + -this.headerBoundary
             }
         } else {
             if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
-                size.width = this.footerBoundary + -this.headerBoundary + this.paddingLeft + this.paddingRight
+                size.width = this.footerBoundary + -this.headerBoundary
             } else {
-                size.width = this.headerBoundary + -this.footerBoundary + this.paddingLeft + this.paddingRight
+                size.width = this.headerBoundary + -this.footerBoundary
             }
         }
         if (size.width < this.view.contentSize.width) {
@@ -419,12 +420,13 @@ export class SuperLayout extends Component {
         return this._centerPosition
     }
     onLoad() {
+        this.transform?.setAnchorPoint(new Vec2(.5, .5))
         this.transform?.setContentSize(this.view.contentSize)
         this.node.setPosition(Vec3.ZERO)
-        Object.defineProperty(this.transform, "contentSize", {
-            configurable: true,
-            get: () => this.contentSize,
-        })
+        this.scrollView.view?.node.on(Node.EventType.SIZE_CHANGED, this.onViewSizeChange, this)
+        Object.defineProperty(this.transform, "contentSize", { get: () => this.contentSize })
+        Object.defineProperty(this.transform, "width", { get: () => this.contentSize.width })
+        Object.defineProperty(this.transform, "height", { get: () => this.contentSize.height })
     }
     onEnable() {
         this.addEventListener()
@@ -432,6 +434,7 @@ export class SuperLayout extends Component {
     onDisable() {
         this.removeEventListener()
     }
+
     /** 更新item数量 */
     async total(count: number) {
         let created = await this.createItems(count)
@@ -603,6 +606,21 @@ export class SuperLayout extends Component {
         }
         localPos.multiply(new Vec3(-1, -1, 1)).add(multiple)
         this.scrollView.scrollToAny(localPos, timeInSecond)
+    }
+    protected onViewSizeChange() {
+        this.isRestart = true
+        for (let i = 0; i < this.node.children.length; i++) {
+            const child: any = this.node.children[i];
+            const transform = child._uiProps.uiTransformComp!
+            this.setAndSaveSizeAndScale(transform)
+        }
+        this.resetChilds(true)
+        this.isRestart = false
+    }
+    protected setAndSaveSizeAndScale(item: UITransform) {
+        item.setContentSize(this.getItemSize(item));
+        (item.node as any)["__size"] = item.contentSize.clone();
+        (item.node as any)["__scale"] = item.node.getScale().clone();
     }
     /** 根据centerAnchor计算自动居中的真实位置 */
     protected getCenterAnchor(item: UITransform, center: Vec3) {
@@ -928,12 +946,10 @@ export class SuperLayout extends Component {
             let child: any = instantiate(this.prefab)
             child["__index"] = this.node.children.length
             const transform = child._uiProps.uiTransformComp
-            transform.setContentSize(this.getItemSize(transform))
+            this.setAndSaveSizeAndScale(transform)
             this.setItemPosition(child._uiProps.uiTransformComp, this.footer!)
             this.node.addChild(child)
             this.notifyRefreshItem(child)
-            child["__size"] = transform.contentSize.clone()
-            child["__scale"] = child.getScale().clone()
             child.on(Node.EventType.SIZE_CHANGED, this.onChildSize, this)
             child.on(Node.EventType.TRANSFORM_CHANGED, this.onChildScale, this)
             let selfHorW, viewHorW
@@ -980,6 +996,7 @@ export class SuperLayout extends Component {
     }
     /** 当Item缩放改变时 限制并改回该有的缩放 */
     protected onChildScale(type: any) {
+        if (this.isRestart) return
         if (!this.affectedByScale) return
         if (type == Node.TransformBit.SCALE) {
             for (let i = 0; i < this.node.children.length; i++) {
@@ -1013,6 +1030,7 @@ export class SuperLayout extends Component {
     }
     /** 当Item尺寸改变时 限制并改回该有的尺寸 */
     protected onChildSize() {
+        if (this.isRestart) return
         for (let i = 0; i < this.node.children.length; i++) {
             const child: any = this.node.children[i];
             const __size = child["__size"]
@@ -1080,6 +1098,7 @@ export class SuperLayout extends Component {
         return trans.height * this.getUsedScaleValue(trans.node.scale.y)
     }
     protected onPositionChanged() {
+        if (this.isRestart) return
         if (this.vertical) {
             if (this.scrollView.prevLocation.y < this.scrollView.location.y) {
                 this.scrollDirection = ScrollDirection.FOOTER
