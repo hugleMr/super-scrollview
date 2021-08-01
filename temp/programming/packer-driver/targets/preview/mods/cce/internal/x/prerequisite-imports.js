@@ -1,9 +1,0 @@
-System.register(["file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/core/super-layout.ts", "file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/core/super-scrollview.ts", "file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/scripts/auto-center.ts", "file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/scripts/baseItem.ts", "file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/scripts/baseMain.ts", "file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/scripts/horizontal.ts", "file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/scripts/main.ts", "file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/scripts/refresh-load.ts", "file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/scripts/simple.ts", "file:///Users/stevejobs/Documents/GitHub/super-scrollview/assets/scripts/vertical.ts"], function (_export, _context) {
-  "use strict";
-
-  return {
-    setters: [function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsCoreSuperLayoutTs) {}, function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsCoreSuperScrollviewTs) {}, function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsScriptsAutoCenterTs) {}, function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsScriptsBaseItemTs) {}, function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsScriptsBaseMainTs) {}, function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsScriptsHorizontalTs) {}, function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsScriptsMainTs) {}, function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsScriptsRefreshLoadTs) {}, function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsScriptsSimpleTs) {}, function (_fileUsersStevejobsDocumentsGitHubSuperScrollviewAssetsScriptsVerticalTs) {}],
-    execute: function () {}
-  };
-});
-//# sourceMappingURL=prerequisite-imports.js.map
