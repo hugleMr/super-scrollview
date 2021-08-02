@@ -9,7 +9,11 @@ export class Horizontal extends BaseItem {
         this.input.placeholder = this.transform?.width.toString()!
     }
     onInput() {
-        if (isNaN(Number(this.input.string))) return
+        let width = Number(this.input.string)
+        if (isNaN(width)) return
+        if (width < 100) {
+            return
+        }
         this.transform?.setContentSize(new Size(Number(this.input.string), this.transform.contentSize.height))
     }
 }

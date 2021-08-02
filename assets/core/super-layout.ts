@@ -8,7 +8,6 @@
  */
 import { _decorator, Component, Node, ccenum, UITransform, SystemEventType, director, Vec3, EventHandler, instantiate, Prefab, Size, Vec2, size, ScrollView, PageView, PageViewIndicator } from 'cc';
 import { SuperScrollview } from './super-scrollview';
-import { SuperPageview } from './super-pageview';
 const { ccclass, property, requireComponent } = _decorator;
 const EPSILON = 1e-4
 enum Type {
