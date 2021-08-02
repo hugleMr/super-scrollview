@@ -4,7 +4,7 @@
  * @Date: 2021-8-1 01:15:04
  * @Last Modified by: steveJobs
  * @Last Modified time: 2021-8-1 14:35:43
- * @Description: 微信 icipiqkm
+ * @Description: 
  */
 import { _decorator, Node, EventTouch, Vec3, Vec2, ScrollView, EventHandler } from 'cc';
 import { SuperLayout } from './super-layout';
