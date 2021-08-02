@@ -6,8 +6,9 @@
  * @Last Modified time: 2021-8-1 14:35:43
  * @Description: 
  */
-import { _decorator, Component, Node, ccenum, UITransform, SystemEventType, director, Vec3, EventHandler, instantiate, Prefab, Size, Vec2, size } from 'cc';
+import { _decorator, Component, Node, ccenum, UITransform, SystemEventType, director, Vec3, EventHandler, instantiate, Prefab, Size, Vec2, size, ScrollView, PageView, PageViewIndicator } from 'cc';
 import { SuperScrollview } from './super-scrollview';
+import { SuperPageview } from './super-pageview';
 const { ccclass, property, requireComponent } = _decorator;
 const EPSILON = 1e-4
 enum Type {
@@ -33,8 +34,12 @@ enum ScrollDirection {
 @ccclass('SuperLayout')
 @requireComponent(UITransform)
 export class SuperLayout extends Component {
+    static VerticalAxisDirection = VerticalAxisDirection
+    static HorizontalAxisDirection = HorizontalAxisDirection
+
     @property(SuperScrollview) scrollView!: SuperScrollview
     @property(UITransform) view!: UITransform
+    @property(Prefab) prefab!: Prefab
     @property({ type: Type }) layoutType: Type = Type.VERTICAL
     @property({ type: VerticalAxisDirection }) verticalAxisDirection = VerticalAxisDirection.TOP_TO_BOTTOM
     @property({ type: HorizontalAxisDirection }) horizontalAxisDirection = HorizontalAxisDirection.LEFT_TO_RIGHT
@@ -47,11 +52,36 @@ export class SuperLayout extends Component {
     @property({ tooltip: "横轴间距" }) spacingX: number = 0
     @property({ tooltip: "纵轴间距" }) spacingY: number = 0
     @property({ tooltip: "计算缩放后的尺寸" }) affectedByScale: boolean = false
-    @property({ tooltip: "上/左 无限循环" }) headerLoop: boolean = false
-    @property({ tooltip: "下/右 无限循环" }) footerLoop: boolean = false
-    @property(Prefab) prefab!: Prefab
-    @property(EventHandler) refreshItemEvents: EventHandler[] = []
-    @property({ tooltip: "开启自动居中" }) autoCenter: boolean = false
+
+    @property({ tooltip: "开启翻页模式" }) isPageView: boolean = false
+    @property({
+        tooltip: "每个页面翻页时所需时间。单位：秒",
+        visible: function () { return (this as any).isPageView }
+    }) pageTurningSpeed = 0.3
+    @property({
+        type: PageViewIndicator,
+        visible: function () { return (this as any).isPageView }
+    }) indicator!: PageViewIndicator
+    @property({
+        slide: true,
+        range: [0, 1, 0.01],
+        tooltip: "滚动临界值，默认单位百分比，当拖拽超出该数值时，松开会自动滚动下一页，小于时则还原",
+        visible: function () { return (this as any).isPageView }
+    }) scrollThreshold = 0.5
+    @property({
+        tooltip: "快速滑动翻页临界值。当用户快速滑动时，会根据滑动开始和结束的距离与时间计算出一个速度值,该值与此临界值相比较，如果大于临界值，则进行自动翻页",
+        visible: function () { return (this as any).isPageView }
+    }) autoPageTurningThreshold = 100
+    @property({
+        type: EventHandler,
+        visible: function () { return (this as any).isPageView }
+    }) pageEvents: EventHandler[] = []
+
+
+    @property({
+        tooltip: "开启自动居中",
+        visible: function () { return !(this as any).isPageView }
+    }) autoCenter: boolean = false
     @property({
         tooltip: "自动居中的滚动时间",
         visible: function () { return (this as any).autoCenter }
@@ -66,6 +96,18 @@ export class SuperLayout extends Component {
         tooltip: "自动居中时、Item的居中锚点",
         visible: function () { return (this as any).autoCenter }
     }) centerAnchor: Vec2 = new Vec2(.5, .5)
+
+    @property({ tooltip: "上/左 无限循环" }) headerLoop: boolean = false
+    @property({ tooltip: "下/右 无限循环" }) footerLoop: boolean = false
+    @property(EventHandler) refreshItemEvents: EventHandler[] = []
+    private _currPageIndex: number = 0
+    get currPageIndex() {
+        return this._currPageIndex
+    }
+    private _lastPageIndex: number = 0
+    get lastPageIndex() {
+        return this._lastPageIndex
+    }
     private isRestart: boolean = false
     /** 当前滚动方向 */
     private scrollDirection: ScrollDirection = ScrollDirection.NONE
@@ -424,6 +466,7 @@ export class SuperLayout extends Component {
         this.transform?.setAnchorPoint(new Vec2(.5, .5))
         this.transform?.setContentSize(this.view.contentSize)
         this.node.setPosition(Vec3.ZERO)
+        if (this.isPageView) this.autoCenter = false
         this.scrollView.view?.node.on(Node.EventType.SIZE_CHANGED, this.onViewSizeChange, this)
         Object.defineProperty(this.transform, "contentSize", { get: () => this.contentSize })
         Object.defineProperty(this.transform, "width", { get: () => this.contentSize.width })
@@ -435,7 +478,6 @@ export class SuperLayout extends Component {
     onDisable() {
         this.removeEventListener()
     }
-
     /** 更新item数量 */
     async total(count: number) {
         await this.createItems(count)
@@ -443,6 +485,9 @@ export class SuperLayout extends Component {
         this._itemTotal = count
         this.refreshItems(offset)
         this.scrollView.release()
+        if (this.indicator) {
+            this.indicator.setPageView((this.scrollView as any));
+        }
     }
     /** 自动居中到最近Item */
     scrollToCenter() {
@@ -490,6 +535,9 @@ export class SuperLayout extends Component {
     scrollToIndex(index: number, timeInSecond?: number, boundary?: Vec3, reverse: boolean = false) {
         if (isNaN(index) || index < 0 || index > this.itemTotal - 1) return
         this.scrollView.stopAutoScroll()
+        if (this.isPageView) {
+            this.scrollView.savePageIndex(index)
+        }
         var offset = 0
         var child = this.node.children.find((item: any) => item["__index"] == index)
         if (!child) {

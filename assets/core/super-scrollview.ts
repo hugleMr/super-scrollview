@@ -6,18 +6,21 @@
  * @Last Modified time: 2021-8-1 14:35:43
  * @Description: 
  */
-import { _decorator, Node, EventTouch, Vec3, Vec2, ScrollView, EventHandler } from 'cc';
+import { _decorator, Node, EventTouch, Vec3, Vec2, ScrollView, EventHandler, PageView } from 'cc';
 import { SuperLayout } from './super-layout';
 const { ccclass, property } = _decorator;
 const quintEaseOut = (time: number) => {
     time -= 1;
-    return (time * time * time * time * time + 1);
+    return (time * time * time * time * time + 1)
 };
 const EPSILON = 1e-4
 const OUT_OF_BOUNDARY_BREAKING_FACTOR = 0.015
+const _tempVec2 = new Vec2()
+
 @ccclass('SuperScrollview')
 export class SuperScrollview extends ScrollView {
     private _layout!: SuperLayout
+
     @property pullRefresh: boolean = false
     @property({
         displayName: "顶部偏移量",
@@ -47,18 +50,42 @@ export class SuperScrollview extends ScrollView {
     }) footerEvents: EventHandler[] = []
     prevLocation: Vec2 = new Vec2()
     location: Vec2 = new Vec2()
+    set autoScrolling(value: boolean) { this._autoScrolling = value }
+    private _touchBeganPosition = new Vec2()
+    private _touchEndPosition = new Vec2()
+    private isMoveHeader: boolean = false
+    private isMoveFooter: boolean = false
+    private isLockHeader: boolean = false
+    private isLockFooter: boolean = false
+    private headerProgress: number = 0
+    private footerProgress: number = 0
     onLoad() {
         if (this.layout.autoCenter) {
             this.brake = 0.7
         }
     }
+    public onEnable() {
+        super.onEnable()
+        this.node.on(PageView.EventType.SCROLL_ENG_WITH_THRESHOLD, this.dispatchPageTurningEvent, this)
+
+    }
+
+    public onDisable() {
+        super.onDisable()
+        this.node.off(PageView.EventType.SCROLL_ENG_WITH_THRESHOLD, this.dispatchPageTurningEvent, this)
+
+    }
     get layout() {
-        if (!this._layout) {
-            this._layout = this.content?.getComponent(SuperLayout)!
-        }
+        if (!this._layout) { this._layout = this.content?.getComponent(SuperLayout)! }
         return this._layout
     }
     private isCallSoonFinish: boolean = false
+    get curPageIdx() {
+        return this.layout["_currPageIndex"]
+    }
+    getPages() {
+        return new Array(this.layout.itemTotal)
+    }
     protected _getContentTopBoundary() {
         if (!this._content) {
             return -1
@@ -89,101 +116,12 @@ export class SuperScrollview extends ScrollView {
     }
     protected _onTouchBegan(event: EventTouch, captureListeners?: Node[]) {
         this.isCallSoonFinish = false
+        if (this.layout.isPageView) {
+            event.touch!.getUILocation(_tempVec2)
+            Vec2.set(this._touchBeganPosition, _tempVec2.x, _tempVec2.y)
+        }
         super._onTouchBegan(event, captureListeners)
     }
-    set autoScrolling(value: boolean) {
-        this._autoScrolling = value
-    }
-    protected _processAutoScrolling(dt: number) {
-        const isAutoScrollBrake = this._isNecessaryAutoScrollBrake();
-        const brakingFactor = isAutoScrollBrake ? OUT_OF_BOUNDARY_BREAKING_FACTOR : 1;
-        this._autoScrollAccumulatedTime += dt * (1 / brakingFactor);
-        let percentage = Math.min(1, this._autoScrollAccumulatedTime / this._autoScrollTotalTime);
-        if (this._autoScrollAttenuate) {
-            percentage = quintEaseOut(percentage);
-        }
-        const clonedAutoScrollTargetDelta = this._autoScrollTargetDelta.clone();
-        clonedAutoScrollTargetDelta.multiplyScalar(percentage);
-        const clonedAutoScrollStartPosition = this._autoScrollStartPosition.clone();
-        clonedAutoScrollStartPosition.add(clonedAutoScrollTargetDelta);
-        let reachedEnd = Math.abs(percentage - 1) <= EPSILON;
-
-        const fireEvent = Math.abs(percentage - 1) <= this.getScrollEndedEventTiming();
-        if (fireEvent && !this._isScrollEndedWithThresholdEventFired) {
-            this._dispatchEvent(ScrollView.EventType.SCROLL_ENG_WITH_THRESHOLD);
-            this._isScrollEndedWithThresholdEventFired = true;
-        }
-        if (this.elastic) {
-            const brakeOffsetPosition = clonedAutoScrollStartPosition.clone();
-            brakeOffsetPosition.subtract(this._autoScrollBrakingStartPosition);
-            if (isAutoScrollBrake) {
-                brakeOffsetPosition.multiplyScalar(brakingFactor);
-            }
-            clonedAutoScrollStartPosition.set(this._autoScrollBrakingStartPosition);
-            clonedAutoScrollStartPosition.add(brakeOffsetPosition);
-        } else {
-            const moveDelta = clonedAutoScrollStartPosition.clone();
-            moveDelta.subtract(this.getContentPosition());
-            const outOfBoundary = this._getHowMuchOutOfBoundary(moveDelta);
-            if (!outOfBoundary.equals(Vec3.ZERO, EPSILON)) {
-                clonedAutoScrollStartPosition.add(outOfBoundary);
-                reachedEnd = true;
-            }
-        }
-        if (reachedEnd) {
-            this._autoScrolling = false;
-        }
-        const deltaMove = clonedAutoScrollStartPosition.clone();
-        deltaMove.subtract(this.getContentPosition());
-        this._clampDelta(deltaMove);
-        /** 重写这个方法的主要原因是插入以下逻辑  功能用于自动居中 其他并未改动 */
-        if (this.layout.vertical && Math.abs(deltaMove.y) <= 2 && !this.isCallSoonFinish) {
-            this.layout["soonFinish"]()
-            this.isCallSoonFinish = true
-        } else if (!this.layout.vertical && Math.abs(deltaMove.x) <= 2 && !this.isCallSoonFinish) {
-            this.layout["soonFinish"]()
-            this.isCallSoonFinish = true
-        }
-        this._moveContent(deltaMove, reachedEnd);
-        this._dispatchEvent(ScrollView.EventType.SCROLLING);
-        if (!this._autoScrolling) {
-            this._isBouncing = false;
-            this._scrolling = false;
-            this._dispatchEvent(ScrollView.EventType.SCROLL_ENDED);
-        }
-    }
-    scrollToAny(moveDelta: Vec3, timeInSecond?: number, attenuated = true) {
-        if (timeInSecond) {
-            this._startAutoScroll(moveDelta, timeInSecond, attenuated !== false);
-        } else {
-            this._moveContent(moveDelta);
-        }
-    }
-    release() {
-        this.isMoveHeader = false
-        this.isMoveFooter = false
-        if (this.isLockHeader || this.isLockFooter) {
-            this.vertical && this.isLockHeader && (this._topBoundary += this.headerOutOffset)
-            this.vertical && this.isLockFooter && (this._bottomBoundary -= this.footerOutOffset)
-            this.horizontal && this.isLockHeader && (this._leftBoundary -= this.headerOutOffset)
-            this.horizontal && this.isLockFooter && (this._rightBoundary += this.footerOutOffset)
-            this.clearProgress()
-            this.layout["onPositionChanged"]()
-            this.isLockHeader = false
-            this.isLockFooter = false
-            this.startAutoScroll()
-        }
-    }
-    startAutoScroll() {
-        this._autoScrolling = true
-        this._outOfBoundaryAmountDirty = true
-    }
-    private isMoveHeader: boolean = false
-    private isMoveFooter: boolean = false
-    private isLockHeader: boolean = false
-    private isLockFooter: boolean = false
-    private headerProgress: number = 0
-    private footerProgress: number = 0
     protected _onTouchMoved(event: EventTouch, captureListeners: any) {
         this.prevLocation = event.touch?.getPreviousLocation()!
         this.location = event.touch?.getLocation()!
@@ -205,6 +143,107 @@ export class SuperScrollview extends ScrollView {
                 this.clearProgress()
             }
         }
+    }
+
+    protected _onTouchEnded(event: EventTouch, captureListeners: any) {
+        if (this.layout.isPageView) {
+            event.touch!.getUILocation(_tempVec2)
+            Vec2.set(this._touchEndPosition, _tempVec2.x, _tempVec2.y)
+        }
+        super._onTouchEnded(event, captureListeners)
+    }
+
+    protected _onTouchCancelled(event: EventTouch, captureListeners: any) {
+        if (this.layout.isPageView) {
+            event.touch!.getUILocation(_tempVec2)
+            Vec2.set(this._touchEndPosition, _tempVec2.x, _tempVec2.y)
+        }
+        super._onTouchCancelled(event, captureListeners)
+    }
+
+    protected _processAutoScrolling(dt: number) {
+        const isAutoScrollBrake = this._isNecessaryAutoScrollBrake()
+        const brakingFactor = isAutoScrollBrake ? OUT_OF_BOUNDARY_BREAKING_FACTOR : 1
+        this._autoScrollAccumulatedTime += dt * (1 / brakingFactor);
+        let percentage = Math.min(1, this._autoScrollAccumulatedTime / this._autoScrollTotalTime)
+        if (this._autoScrollAttenuate) {
+            percentage = quintEaseOut(percentage)
+        }
+        const clonedAutoScrollTargetDelta = this._autoScrollTargetDelta.clone()
+        clonedAutoScrollTargetDelta.multiplyScalar(percentage)
+        const clonedAutoScrollStartPosition = this._autoScrollStartPosition.clone()
+        clonedAutoScrollStartPosition.add(clonedAutoScrollTargetDelta);
+        let reachedEnd = Math.abs(percentage - 1) <= EPSILON;
+
+        const fireEvent = Math.abs(percentage - 1) <= this.getScrollEndedEventTiming()
+        if (fireEvent && !this._isScrollEndedWithThresholdEventFired) {
+            this._dispatchEvent(ScrollView.EventType.SCROLL_ENG_WITH_THRESHOLD)
+            this._isScrollEndedWithThresholdEventFired = true;
+        }
+        if (this.elastic) {
+            const brakeOffsetPosition = clonedAutoScrollStartPosition.clone()
+            brakeOffsetPosition.subtract(this._autoScrollBrakingStartPosition)
+            if (isAutoScrollBrake) {
+                brakeOffsetPosition.multiplyScalar(brakingFactor)
+            }
+            clonedAutoScrollStartPosition.set(this._autoScrollBrakingStartPosition)
+            clonedAutoScrollStartPosition.add(brakeOffsetPosition)
+        } else {
+            const moveDelta = clonedAutoScrollStartPosition.clone()
+            moveDelta.subtract(this.getContentPosition())
+            const outOfBoundary = this._getHowMuchOutOfBoundary(moveDelta)
+            if (!outOfBoundary.equals(Vec3.ZERO, EPSILON)) {
+                clonedAutoScrollStartPosition.add(outOfBoundary)
+                reachedEnd = true;
+            }
+        }
+        if (reachedEnd) {
+            this._autoScrolling = false;
+        }
+        const deltaMove = clonedAutoScrollStartPosition.clone()
+        deltaMove.subtract(this.getContentPosition());
+        this._clampDelta(deltaMove);
+        /** 重写这个方法的主要原因是插入以下逻辑  功能用于自动居中 其他并未改动 */
+        if (this.layout.vertical && Math.abs(deltaMove.y) <= 2 && !this.isCallSoonFinish) {
+            this.layout["soonFinish"]()
+            this.isCallSoonFinish = true
+        } else if (!this.layout.vertical && Math.abs(deltaMove.x) <= 2 && !this.isCallSoonFinish) {
+            this.layout["soonFinish"]()
+            this.isCallSoonFinish = true
+        }
+        this._moveContent(deltaMove, reachedEnd);
+        this._dispatchEvent(ScrollView.EventType.SCROLLING)
+        if (!this._autoScrolling) {
+            this._isBouncing = false;
+            this._scrolling = false;
+            this._dispatchEvent(ScrollView.EventType.SCROLL_ENDED)
+        }
+    }
+    scrollToAny(moveDelta: Vec3, timeInSecond?: number, attenuated = true) {
+        if (timeInSecond) {
+            this._startAutoScroll(moveDelta, timeInSecond, attenuated !== false)
+        } else {
+            this._moveContent(moveDelta)
+        }
+    }
+    release() {
+        this.isMoveHeader = false
+        this.isMoveFooter = false
+        if (this.isLockHeader || this.isLockFooter) {
+            this.vertical && this.isLockHeader && (this._topBoundary += this.headerOutOffset)
+            this.vertical && this.isLockFooter && (this._bottomBoundary -= this.footerOutOffset)
+            this.horizontal && this.isLockHeader && (this._leftBoundary -= this.headerOutOffset)
+            this.horizontal && this.isLockFooter && (this._rightBoundary += this.footerOutOffset)
+            this.clearProgress()
+            this.layout["onPositionChanged"]()
+            this.isLockHeader = false
+            this.isLockFooter = false
+            this.startAutoScroll()
+        }
+    }
+    startAutoScroll() {
+        this._autoScrolling = true
+        this._outOfBoundaryAmountDirty = true
     }
     protected _startAutoScroll(deltaMove: any, timeInSecond: any, attenuated: any) {
         if (this.pullRefresh) {  // 如果没有刷新/加载的监听者 则不计算 
@@ -235,8 +274,8 @@ export class SuperScrollview extends ScrollView {
         super._startAutoScroll(deltaMove, timeInSecond, attenuated)
     }
     protected _updateScrollBar(outOfBoundary: any) {
-        super._updateScrollBar(new Vec2(outOfBoundary.x,outOfBoundary.y))
-        
+        super._updateScrollBar(new Vec2(outOfBoundary.x, outOfBoundary.y))
+
         // console.log(outOfBoundary.y)
         if (this._autoScrollBraking) return // 自动回弹时不计算 （非手动）
         if (!this._autoScrolling) return // 非自动滚动时不计算 
@@ -270,5 +309,164 @@ export class SuperScrollview extends ScrollView {
     private clearProgress() {
         EventHandler.emitEvents(this.headerEvents, this, { action: false, progress: 0, stage: "release" })
         EventHandler.emitEvents(this.footerEvents, this, { action: false, progress: 0, stage: "release" })
+    }
+    private dispatchPageTurningEvent() {
+        if (this.layout["_lastPageIndex"] === this.layout["_currPageIndex"]) return
+        this.layout["_lastPageIndex"] = this.layout["_currPageIndex"]
+        EventHandler.emitEvents(this.layout.pageEvents, this, PageView.EventType.PAGE_TURNING)
+        this.node.emit(PageView.EventType.PAGE_TURNING, this)
+    }
+
+    protected _handleReleaseLogic(touch: any) {
+        if (this.layout.isPageView) {
+            this._autoScrollToPage();
+            if (this._scrolling) {
+                this._scrolling = false;
+                if (!this._autoScrolling) {
+                    this._dispatchEvent(ScrollView.EventType.SCROLL_ENDED);
+                }
+            }
+        } else {
+            super._handleReleaseLogic(touch)
+        }
+
+    }
+    protected _autoScrollToPage() {
+        const bounceBackStarted = this._startBounceBackIfNeeded();
+        if (bounceBackStarted) {
+            const bounceBackAmount = this._getHowMuchOutOfBoundary()
+            this._clampDelta(bounceBackAmount)
+            if (bounceBackAmount.x > 0 || bounceBackAmount.y < 0) {
+                if (this.layout.horizontal) {
+                    if (this.layout.horizontalAxisDirection == SuperLayout.HorizontalAxisDirection.LEFT_TO_RIGHT) {
+                        this.layout["_currPageIndex"] = this.layout.itemTotal === 0 ? 0 : this.layout.itemTotal - 1
+                    } else {
+                        this.layout["_currPageIndex"] = 0
+                    }
+                } else {
+                    if (this.layout.verticalAxisDirection == SuperLayout.VerticalAxisDirection.TOP_TO_BOTTOM) {
+                        this.layout["_currPageIndex"] = this.layout.itemTotal === 0 ? 0 : this.layout.itemTotal - 1
+                    } else {
+                        this.layout["_currPageIndex"] = 0
+                    }
+                }
+            }
+            if (bounceBackAmount.x < 0 || bounceBackAmount.y > 0) {
+                if (this.layout.horizontal) {
+                    if (this.layout.horizontalAxisDirection == SuperLayout.HorizontalAxisDirection.LEFT_TO_RIGHT) {
+                        this.layout["_currPageIndex"] = 0
+                    } else {
+                        this.layout["_currPageIndex"] = this.layout.itemTotal === 0 ? 0 : this.layout.itemTotal - 1
+                    }
+                } else {
+                    if (this.layout.verticalAxisDirection == SuperLayout.VerticalAxisDirection.TOP_TO_BOTTOM) {
+                        this.layout["_currPageIndex"] = 0
+                    } else {
+                        this.layout["_currPageIndex"] = this.layout.itemTotal === 0 ? 0 : this.layout.itemTotal - 1
+                    }
+                }
+            }
+            if (this.layout.indicator) {
+                this.layout.indicator._changedState()
+            }
+        } else {
+            const moveOffset = new Vec2()
+            Vec2.subtract(moveOffset, this._touchBeganPosition, this._touchEndPosition)
+            const index = this.layout["_currPageIndex"]
+            var nextIndex = index + this.getDragDirection(moveOffset)
+            var timeInSecond = this.layout.pageTurningSpeed * Math.abs(index - nextIndex)
+            if (this.layout.footerLoop) {
+                if (nextIndex >= this.layout.itemTotal) {
+                    nextIndex = 0
+                }
+            }
+            if (this.layout.headerLoop) {
+                if (nextIndex < 0) {
+                    nextIndex = this.layout.itemTotal - 1
+                }
+            }
+            const count = this.layout.itemTotal
+            if (nextIndex < count) {
+                if (this.isScrollable(moveOffset, index, nextIndex)) {
+                    this.scrollToPage(nextIndex, timeInSecond)
+                    return;
+                } else {
+                    const touchMoveVelocity = this._calculateTouchMoveVelocity()
+                    if (this.isQuicklyScrollable(touchMoveVelocity)) {
+                        this.scrollToPage(nextIndex, timeInSecond)
+                        return;
+                    }
+                }
+            }
+
+            this.scrollToPage(index, timeInSecond)
+
+        }
+    }
+    savePageIndex(idx: number) {
+        if (idx < 0 || idx >= this.layout.itemTotal) {
+            return false
+        }
+        this.layout["_currPageIndex"] = idx
+        if (this.layout.indicator) {
+            this.layout.indicator._changedState()
+        }
+        return true
+    }
+    protected scrollToPage(idx: number, timeInSecond = 0.3) {
+        if (idx < 0 || idx >= this.layout.itemTotal) {
+            return
+        }
+        if (this.savePageIndex(idx)) {
+            this.layout.scrollToIndex(idx, timeInSecond)
+        }
+    }
+    // 快速滑动
+    protected isQuicklyScrollable(touchMoveVelocity: Vec3) {
+        if (this.horizontal) {
+            if (Math.abs(touchMoveVelocity.x) > this.layout.autoPageTurningThreshold) {
+                return true;
+            }
+        } else if (this.vertical) {
+            if (Math.abs(touchMoveVelocity.y) > this.layout.autoPageTurningThreshold) {
+                return true;
+            }
+        }
+        return false;
+    }
+    protected getDragDirection(moveOffset: Vec2) {
+        if (this.horizontal) {
+            if (moveOffset.x === 0) {
+                return 0;
+            }
+            if (this.layout.horizontalAxisDirection == SuperLayout.HorizontalAxisDirection.LEFT_TO_RIGHT) {
+                return (moveOffset.x > 0 ? this.layout.groupItemTotal : -this.layout.groupItemTotal);
+            } else {
+                return (moveOffset.x < 0 ? this.layout.groupItemTotal : -this.layout.groupItemTotal);
+            }
+        } else {
+            // 由于滚动 Y 轴的原点在在右上角所以应该是小于 0
+            if (moveOffset.y === 0) {
+                return 0;
+            }
+            if (this.layout.verticalAxisDirection == SuperLayout.VerticalAxisDirection.TOP_TO_BOTTOM) {
+                return (moveOffset.y < 0 ? this.layout.groupItemTotal : -this.layout.groupItemTotal);
+            } else {
+                return (moveOffset.y > 0 ? this.layout.groupItemTotal : -this.layout.groupItemTotal);
+            }
+        }
+    }
+    // 是否超过自动滚动临界值
+    protected isScrollable(offset: Vec2, index: number, nextIndex: number) {
+        const viewTrans = this.view
+        if (!viewTrans) {
+            return false
+        }
+        if (this.horizontal) {
+            return Math.abs(offset.x) >= viewTrans.width * this.layout.scrollThreshold
+        } else if (this.vertical) {
+            return Math.abs(offset.y) >= viewTrans.height * this.layout.scrollThreshold
+        }
+        return false;
     }
 }
