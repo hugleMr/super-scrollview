@@ -383,6 +383,7 @@ export class SuperLayout extends Component {
         }
         return size
     }
+    private selfHorW: number = 0
     private prevPos: Vec3 = new Vec3(0, 0, 0)
     private _maxPrefabTotal: number = 0
     /** 已被创建的Item数量 */
@@ -437,12 +438,10 @@ export class SuperLayout extends Component {
 
     /** 更新item数量 */
     async total(count: number) {
-        let created = await this.createItems(count)
+        await this.createItems(count)
         let offset = count - this.itemTotal
         this._itemTotal = count
-        if (!created) {
-            this.refreshItems(offset)
-        }
+        this.refreshItems(offset)
         this.scrollView.release()
     }
     /** 自动居中到最近Item */
@@ -607,8 +606,18 @@ export class SuperLayout extends Component {
         localPos.multiply(new Vec3(-1, -1, 1)).add(multiple)
         this.scrollView.scrollToAny(localPos, timeInSecond)
     }
-    protected onViewSizeChange() {
+    protected async onViewSizeChange() {
         this.isRestart = true
+        if (this.selfHorW > 0) {
+            // 当尺寸改变时 重新计算prefab的数量
+            var viewHorW = this.vertical ? this.view.height : this.view.width
+            if (this.selfHorW < viewHorW * this.multiple) {
+                this.selfHorW = 0
+                this._maxPrefabTotal = 0
+                await this.createItems(this.itemTotal)
+                this.scrollToHeader()
+            }
+        }
         for (let i = 0; i < this.node.children.length; i++) {
             const child: any = this.node.children[i];
             const transform = child._uiProps.uiTransformComp!
@@ -968,6 +977,8 @@ export class SuperLayout extends Component {
              */
             if (selfHorW >= viewHorW * this.multiple) {
                 this._maxPrefabTotal = this.node.children.length
+                this.selfHorW = selfHorW
+                console.log("已固定item数量", this._maxPrefabTotal)
                 return false
             }
             return true
