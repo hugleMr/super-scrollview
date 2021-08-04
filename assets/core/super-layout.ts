@@ -30,6 +30,17 @@ enum ScrollDirection {
     HEADER = 1,
     FOOTER = 2,
 }
+
+enum IndexVerticalAxisDirection {
+    TOP = 0,
+    BOTTOM = 1,
+}
+ccenum(IndexVerticalAxisDirection)
+enum IndexHorizontalAxisDirection {
+    LEFT = 0,
+    RIGHT = 1
+}
+ccenum(IndexHorizontalAxisDirection)
 @ccclass('SuperLayout')
 @requireComponent(UITransform)
 export class SuperLayout extends Component {
@@ -40,8 +51,17 @@ export class SuperLayout extends Component {
     @property(UITransform) view!: UITransform
     @property(Prefab) prefab!: Prefab
     @property({ type: Type }) layoutType: Type = Type.VERTICAL
+    @property({
+        type: IndexVerticalAxisDirection,
+        visible: function () { return (this as any).layoutType == Type.VERTICAL && !(this as any).autoCenter }
+    }) indexVerticalAxisDirection = IndexVerticalAxisDirection.TOP
+    @property({
+        type: IndexHorizontalAxisDirection,
+        visible: function () { return (this as any).layoutType == Type.HORIZONTAL && !(this as any).autoCenter }
+    }) indexHorizontalAxisDirection = IndexHorizontalAxisDirection.LEFT
     @property({ type: VerticalAxisDirection }) verticalAxisDirection = VerticalAxisDirection.TOP_TO_BOTTOM
     @property({ type: HorizontalAxisDirection }) horizontalAxisDirection = HorizontalAxisDirection.LEFT_TO_RIGHT
+
     @property({ tooltip: "最小值=1，大于1就是Grid模式" }) groupItemTotal: number = 1
     @property({ tooltip: "决定最多创建Prefab的数量" }) multiple: number = 2
     @property({ tooltip: "顶部填充" }) paddingTop: number = 0
@@ -232,11 +252,20 @@ export class SuperLayout extends Component {
                 }
             }
         } else {
-            if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
-                return this.headerBoundary + (this.viewHeaderBoundary - (this.view.node.position as any)[key])
+            if (this.vertical) {
+                if (this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM) {
+                    return this.headerBoundary + (this.viewHeaderBoundary - (this.view.node.position as any)[key])
+                } else {
+                    return this.footerBoundary + (this.viewHeaderBoundary - (this.view.node.position as any)[key])
+                }
             } else {
-                return this.footerBoundary + (this.viewHeaderBoundary - (this.view.node.position as any)[key])
+                if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
+                    return this.headerBoundary + (this.viewHeaderBoundary - (this.view.node.position as any)[key])
+                } else {
+                    return this.footerBoundary + (this.viewHeaderBoundary - (this.view.node.position as any)[key])
+                }
             }
+
         }
     }
     /** 自动居中节点底部边界 */
@@ -295,7 +324,7 @@ export class SuperLayout extends Component {
             }
         } else {
             if (this.footerIndex == this.itemTotal - 1) {
-                return this, this.footerBoundary
+                return this.footerBoundary
             }
         }
         return 0
@@ -345,7 +374,7 @@ export class SuperLayout extends Component {
         }
         if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
             if (this.footerIndex == this.itemTotal - 1) {
-                return this, this.footerBoundary
+                return this.footerBoundary
             }
         } else {
             if (this.headerIndex == 0) {
@@ -429,6 +458,7 @@ export class SuperLayout extends Component {
     private _maxPrefabTotal: number = 0
     /** 已被创建的Item数量 */
     get maxPrefabTotal(): number { return this._maxPrefabTotal }
+    private currentCreateItemTotal: number = 0
     private _itemTotal: number = 0
     /** 数据长度 */
     get itemTotal(): number { return this._itemTotal }
@@ -445,13 +475,13 @@ export class SuperLayout extends Component {
                 }
             } else {
                 if (this.vertical) {
-                    if (this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM) {
+                    if (this.indexVerticalAxisDirection == IndexVerticalAxisDirection.TOP) {
                         this._centerPosition.y = this.viewHeaderBoundary
                     } else {
                         this._centerPosition.y = this.viewFooterBoundary
                     }
                 } else {
-                    if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
+                    if (this.indexHorizontalAxisDirection == IndexHorizontalAxisDirection.LEFT) {
                         this._centerPosition.x = this.viewHeaderBoundary
                     } else {
                         this._centerPosition.x = this.viewFooterBoundary
@@ -479,6 +509,7 @@ export class SuperLayout extends Component {
     }
     /** 更新item数量 */
     async total(count: number) {
+        this.currentCreateItemTotal = count
         await this.createItems(count)
         let offset = count - this.itemTotal
         this._itemTotal = count
@@ -530,6 +561,113 @@ export class SuperLayout extends Component {
         }
         this.scrollToIndex(this.itemTotal - 1, timeInSecond, new Vec3(headerOrFooter, headerOrFooter), true)
     }
+    private isNearFooter(index: number) {
+        let nearFooter = false
+        let flag = index > this.footerIndex && index < this.headerIndex
+        if (flag) {
+            let result = Math.abs(index - this.headerIndex) < Math.abs(index - this.footerIndex)
+            if (this.vertical) {
+                if (this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM) {
+                    nearFooter = !result
+                } else {
+                    nearFooter = result
+                }
+            } else {
+                if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
+                    nearFooter = !result
+                } else {
+                    nearFooter = result
+                }
+            }
+        } else if (index > this.footerIndex) {
+            if (this.vertical) {
+                nearFooter = this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM ? true : false
+            } else {
+                nearFooter = this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT ? true : false
+            }
+        } else if (index < this.headerIndex) {
+            if (this.vertical) {
+                nearFooter = this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM ? false : true
+            } else {
+                nearFooter = this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT ? false : true
+            }
+        }
+        return nearFooter
+    }
+    private getFooterOffset(index: number) {
+        let footerOffset = this.footerIndex % this.groupItemTotal
+        let indexOffset = index % this.groupItemTotal
+        return indexOffset - footerOffset + this.groupItemTotal
+    }
+    private getHeaderOffset(index: number) {
+        let headerOffset = this.headerIndex % this.groupItemTotal
+        let indexOffset = index % this.groupItemTotal
+        return headerOffset - indexOffset + this.groupItemTotal
+    }
+    private offsetToHeader(index: number) {
+        var offset = 0
+        if (this.vertical) {
+            if (this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM) {
+                offset = this.getHeaderOffset(index)
+            } else {
+                offset = this.getFooterOffset(index)
+            }
+        } else {
+            if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
+                offset = this.getHeaderOffset(index)
+            } else {
+                offset = this.getFooterOffset(index)
+            }
+        }
+        for (let i = 0; i < offset; i++) {
+            this.pushToHeader(true)
+        }
+    }
+    private offsetToFooter(index: number) {
+        var offset = 0
+        if (this.vertical) {
+            if (this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM) {
+                offset = this.getFooterOffset(index)
+            } else {
+                offset = this.getHeaderOffset(index)
+            }
+        } else {
+            if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
+                offset = this.getFooterOffset(index)
+            } else {
+                offset = this.getHeaderOffset(index)
+            }
+        }
+        for (let i = 0; i < offset; i++) {
+            this.pushToFooter(true)
+        }
+    }
+    private resetIndexStartToEnd(index: number) {
+        for (let i = 0; i < this.node.children.length; i++) {
+            const child: any = this.node.children[i];
+            child["__index"] = index
+            index++
+            if (this.headerLoop || this.footerLoop) {
+                if (index >= this.itemTotal) {
+                    index = 0
+                }
+            }
+            this.notifyRefreshItem(child)
+        }
+    }
+    private resetIndexEndToStart(index: number) {
+        for (let i = this.node.children.length - 1; i >= 0; i--) {
+            const child: any = this.node.children[i];
+            child["__index"] = index
+            index--
+            if (this.headerLoop || this.footerLoop) {
+                if (index < 0) {
+                    index = this.itemTotal - 1
+                }
+            }
+            this.notifyRefreshItem(child)
+        }
+    }
     /** 跳转到指定索引位置 */
     scrollToIndex(index: number, timeInSecond?: number, boundary?: Vec3, reverse: boolean = false) {
         if (isNaN(index) || index < 0 || index > this.itemTotal - 1) return
@@ -537,75 +675,17 @@ export class SuperLayout extends Component {
         if (this.isPageView) {
             this.scrollView.savePageIndex(index)
         }
-        var offset = 0
         var child = this.node.children.find((item: any) => item["__index"] == index)
+        var nearFooter = false
         if (!child) {
-            var isDownOffset = false
-            if (index > this.footerIndex && index < this.headerIndex) {
-                if (Math.abs(index - this.headerIndex) < Math.abs(index - this.footerIndex)) {
-                    isDownOffset = false
-                } else {
-                    isDownOffset = true
-                }
-            } else if (index > this.footerIndex) {
-                isDownOffset = true
-            } else if (index < this.headerIndex) {
-                isDownOffset = false
-            }
-            var start = 0
-            if (isDownOffset) {
-                offset = index % this.groupItemTotal - this.footerIndex % this.groupItemTotal
-                offset = Math.abs(offset)
+            nearFooter = this.isNearFooter(index)
+            var flag = this.vertical && this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM || !this.vertical && this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT
+            if (nearFooter) {
+                this.offsetToFooter(index)
+                flag ? this.resetIndexEndToStart(index) : this.resetIndexStartToEnd(index)
             } else {
-                offset = this.headerIndex % this.groupItemTotal
-                offset = Math.abs(offset)
-            }
-            for (let i = 0; i < offset; i++) {
-                if (this.vertical) {
-                    if (this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM) {
-                        if (isDownOffset) {
-                            this.pushToFooter(true)
-                        } else {
-                            this.pushToHeader(true)
-                        }
-                    } else {
-                        if (isDownOffset) {
-                            this.pushToHeader(true)
-                        } else {
-                            this.pushToFooter(true)
-                        }
-                    }
-                } else {
-                    if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
-                        if (isDownOffset) {
-                            this.pushToFooter(true)
-                        } else {
-                            this.pushToHeader(true)
-                        }
-                    } else {
-                        if (isDownOffset) {
-                            this.pushToHeader(true)
-                        } else {
-                            this.pushToFooter(true)
-                        }
-                    }
-                }
-            }
-            if (isDownOffset) {
-                start = Math.abs(index - this.maxPrefabTotal) + 1
-            } else {
-                start = index < this.groupItemTotal ? 0 : index
-            }
-            for (let i = 0; i < this.node.children.length; i++) {
-                const child: any = this.node.children[i];
-                if (this.headerLoop || this.footerLoop) {
-                    if (start > this.itemTotal - 1) {
-                        start = 0
-                    }
-                }
-                child["__index"] = start
-                this.notifyRefreshItem(child)
-                start++
+                this.offsetToHeader(index)
+                flag ? this.resetIndexStartToEnd(index) : this.resetIndexEndToStart(index)
             }
             child = this.node.children.find((item: any) => item["__index"] == index)
         }
@@ -613,7 +693,7 @@ export class SuperLayout extends Component {
         let itemPos = child.getPosition().clone()
         if (!this.autoCenter) {
             if (this.vertical) {
-                if (this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM) {
+                if (this.indexVerticalAxisDirection == IndexVerticalAxisDirection.TOP) {
                     if (!reverse) {
                         itemPos.y = this.getItemYMax(child._uiProps.uiTransformComp!) + this.paddingTop
                     } else {
@@ -627,7 +707,7 @@ export class SuperLayout extends Component {
                     }
                 }
             } else {
-                if (this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT) {
+                if (this.indexHorizontalAxisDirection == IndexHorizontalAxisDirection.LEFT) {
                     if (!reverse) {
                         itemPos.x = this.getItemXMin(child._uiProps.uiTransformComp!) - this.paddingLeft
                     } else {
@@ -651,17 +731,15 @@ export class SuperLayout extends Component {
             multiple = this.getCenterAnchor(child._uiProps.uiTransformComp!, this.centerPosition)
         }
         localPos.multiply(new Vec3(-1, -1, 1)).add(multiple)
-        this.scrollView.scrollToAny(localPos, timeInSecond)
+        this.scrollView.scrollToAny(localPos, timeInSecond, true)
     }
     protected async onViewSizeChange() {
         this.isRestart = true
-        if (this.selfHorW > 0) {
+        if (this.selfHorW > 0 && this.currentCreateItemTotal > 0) {
             // 当尺寸改变时 重新计算prefab的数量
             var viewHorW = this.vertical ? this.view.height : this.view.width
             if (this.selfHorW < viewHorW * this.multiple) {
-                this.selfHorW = 0
-                this._maxPrefabTotal = 0
-                await this.createItems(this.itemTotal)
+                await this.createItems(this.currentCreateItemTotal, true)
                 this.scrollToHeader()
             }
         }
@@ -984,10 +1062,14 @@ export class SuperLayout extends Component {
         }
     }
     /** 创建Item */
-    protected async createItems(count: number) {
+    protected async createItems(count: number, force: boolean = false) {
         this.gener?.return("")
+        if (force) {
+            this._maxPrefabTotal = 0
+            this.selfHorW = 0
+        }
         // 有多余的item 需要删除 不处理
-        if (this.node.children.length > count) {
+        if (!force && this.node.children.length > count) {
             this.removeItems(count)
             return false
         }
@@ -995,7 +1077,6 @@ export class SuperLayout extends Component {
         if (this._maxPrefabTotal > 0 && this._maxPrefabTotal == this.node.children.length) {
             return false
         }
-
         // 开始分帧创建item
         let total = count - this.node.children.length //计算当前应该创建的总数
         this.gener = this.getGeneratorLength(total, () => {
@@ -1030,7 +1111,7 @@ export class SuperLayout extends Component {
             }
             return true
         })
-        await this.exeGenerator(this.gener, 20) //执行分帧任务 1帧创建10个
+        await this.exeGenerator(this.gener, 20) //执行分帧任务 1帧创建20个
         return true
     }
     /** 删除多余的item */
@@ -1142,7 +1223,7 @@ export class SuperLayout extends Component {
             this.setItemPosition(transform, relative)
             prevItem = transform
         }
-        this.scrollView.startAutoScroll()
+        if (!start) this.scrollView.startAutoScroll()
     }
     protected getUsedScaleValue(value: number) {
         return this.affectedByScale ? Math.abs(value) : 1;
@@ -1248,7 +1329,13 @@ export class SuperLayout extends Component {
     }
     protected pushToFooterHandler() {
         var node: any = this.header?.node
-        if (this.footerLoop) {
+        let loop
+        if (this.vertical) {
+            loop = this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM ? this.footerLoop : this.headerLoop
+        } else {
+            loop = this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT ? this.footerLoop : this.headerLoop
+        }
+        if (loop) {
             if (this.footerIndex >= this.itemTotal - 1) {
                 node["__index"] = 0
             } else {
@@ -1264,7 +1351,28 @@ export class SuperLayout extends Component {
     }
     protected pushToHeaderHandler() {
         var node: any = this.footer?.node
-        if (this.headerLoop) {
+        let loop, loop2
+        if (this.vertical) {
+            loop = this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM ? this.headerLoop : this.footerLoop
+            loop2 = this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM ? this.footerLoop : this.headerLoop
+        } else {
+            loop = this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT ? this.headerLoop : this.footerLoop
+            loop2 = this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT ? this.footerLoop : this.headerLoop
+        }
+        // 对其头部
+        if (!loop && this.headerIndex == 0) {
+            // 判断是否是起始位置
+            var accommodate
+            if (this.vertical) {
+                accommodate = this.horizontalAxisDirection == HorizontalAxisDirection.LEFT_TO_RIGHT ? this.isAccommodateByLeft(this.header!) : this.isAccommodateByRight(this.header!)
+            } else {
+                accommodate = this.verticalAxisDirection == VerticalAxisDirection.TOP_TO_BOTTOM ? this.isAccommodateByTop(this.header!) : this.isAccommodateByBottom(this.header!)
+            }
+            if (accommodate) {
+                this.resetChilds(true)
+            }
+        }
+        if (loop) {
             if (this.headerIndex == 0) {
                 node["__index"] = this.itemTotal - 1
             } else {
@@ -1277,14 +1385,7 @@ export class SuperLayout extends Component {
         this.notifyRefreshItem(node)
         this.setItemPosition(this.footer!, this.header!, true)
         this.footer?.node.setSiblingIndex(0)
-        // 对其头部
-        if (!this.headerLoop && this.headerIndex == 0) {
-            // 判断是否是起始位置
-            let accommodate = this.isAccommodateByLeft(this.header!)
-            if (accommodate) {
-                this.resetChilds(true)
-            }
-        }
+
     }
     /** 通知给定的node刷新数据 */
     protected notifyRefreshItem(target: Node) {

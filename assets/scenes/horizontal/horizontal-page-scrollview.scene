@@ -10,7 +10,7 @@
   },
   {
     "__type__": "cc.Scene",
-    "_name": "horizontal-page",
+    "_name": "horizontal-page-scrollview",
     "_objFlags": 0,
     "_parent": null,
     "_children": [
@@ -31,7 +31,7 @@
     "_globals": {
       "__id__": 143
     },
-    "_id": "66b03c1a-65a3-41ad-9901-db60208f9a2e"
+    "_id": "c9590421-e9c2-47d5-8b22-2803c0a47115"
   },
   {
     "__type__": "cc.Node",
@@ -1624,7 +1624,7 @@
       "__id__": 59
     },
     "prefab": {
-      "__uuid__": "5b7cc66e-729c-4d72-b5cb-3f2df7e2621c",
+      "__uuid__": "04f0cc66-4df6-4be8-ba1d-548f9ff7161a",
       "__expectedType__": "cc.Prefab"
     },
     "layoutType": 0,

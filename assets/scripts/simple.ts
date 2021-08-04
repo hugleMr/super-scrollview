@@ -6,10 +6,10 @@ const { ccclass, property } = _decorator;
 @ccclass('Simple')
 export class Simple extends BaseMain {
 
-    onLoad() {
+    async onLoad() {
         for (let i = 0; i < 50; i++) {
             this.datas.push({ message: i })
         }
-        this.layout.total(this.datas.length)
+        await this.layout.total(this.datas.length)
     }
 }

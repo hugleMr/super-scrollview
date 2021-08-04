@@ -6,7 +6,7 @@
  * @Last Modified time: 2021-8-1 14:35:43
  * @Description: 
  */
-import { _decorator, Node, EventTouch, Vec3, Vec2, ScrollView, EventHandler, PageView } from 'cc';
+import { _decorator, Node, EventTouch, Vec3, Vec2, ScrollView, EventHandler, PageView, EventMouse } from 'cc';
 import { SuperLayout } from './super-layout';
 const { ccclass, property } = _decorator;
 const quintEaseOut = (time: number) => {
@@ -16,11 +16,18 @@ const quintEaseOut = (time: number) => {
 const EPSILON = 1e-4
 const OUT_OF_BOUNDARY_BREAKING_FACTOR = 0.015
 const _tempVec2 = new Vec2()
-
+export enum ScrollViewDirection {
+    HORIZONTAL,
+    VERTICAL,
+    NONE,
+}
 @ccclass('SuperScrollview')
 export class SuperScrollview extends ScrollView {
+    private direction: ScrollViewDirection = ScrollViewDirection.NONE
     private _layout!: SuperLayout
-
+    @property({
+        tooltip: "注意！向上传递事件只会发送当前滑动相反方向,如果开启horizontal则会发送vertical事件。如果开启vertical则会发送horizontal事件。同时开启horizontal和vertical 不会发送任何事件"
+    }) isTransmitEvent: boolean = false
     @property pullRefresh: boolean = false
     @property({
         displayName: "顶部偏移量",
@@ -116,13 +123,49 @@ export class SuperScrollview extends ScrollView {
     }
     protected _onTouchBegan(event: EventTouch, captureListeners?: Node[]) {
         this.isCallSoonFinish = false
+        this.direction = ScrollViewDirection.NONE
         if (this.layout.isPageView) {
             event.touch!.getUILocation(_tempVec2)
             Vec2.set(this._touchBeganPosition, _tempVec2.x, _tempVec2.y)
         }
         super._onTouchBegan(event, captureListeners)
+        if (this.isTransmitEvent) {
+            this.transmitEvent(event, Node.EventType.TOUCH_START)
+        }
     }
     protected _onTouchMoved(event: EventTouch, captureListeners: any) {
+        if (this.isTransmitEvent) {
+
+            if (this.direction == ScrollViewDirection.NONE) {
+                var start = event.getStartLocation()
+                var curre = event.getLocation()
+                var xOffset = Math.abs(start.x - curre.x)
+                var yOffset = Math.abs(start.y - curre.y)
+                if (xOffset > yOffset) {
+                    // 本ScrollView滑动方向过程中达到一定偏移量是也可以向上发送事件
+                    // if (this.vertical) {
+                    //     if (xOffset - yOffset > 50) {
+                    //         this.direction = UIScrollViewDirection.HORIZONTAL
+                    //     }
+                    // }
+                    this.direction = ScrollViewDirection.HORIZONTAL
+
+                } else if (yOffset > xOffset) {
+                    // 本ScrollView滑动方向过程中达到一定偏移量是也可以向上发送事件
+                    // if (this.horizontal) {
+                    //     if (yOffset - xOffset > 50) {
+                    //         this.direction = UIScrollViewDirection.VERTICAL
+                    //     }
+                    // }
+                    this.direction = ScrollViewDirection.VERTICAL
+                }
+            }
+            var canTransmit = (this.vertical && this.direction === ScrollViewDirection.HORIZONTAL) || this.horizontal && this.direction == ScrollViewDirection.VERTICAL
+            if (canTransmit) {
+                this.transmitEvent(event, Node.EventType.TOUCH_MOVE)
+                return
+            }
+        }
         this.prevLocation = event.touch?.getPreviousLocation()!
         this.location = event.touch?.getLocation()!
         super._onTouchMoved(event, captureListeners)
@@ -151,6 +194,9 @@ export class SuperScrollview extends ScrollView {
             Vec2.set(this._touchEndPosition, _tempVec2.x, _tempVec2.y)
         }
         super._onTouchEnded(event, captureListeners)
+        if (this.isTransmitEvent) {
+            this.transmitEvent(event, Node.EventType.TOUCH_END)
+        }
     }
 
     protected _onTouchCancelled(event: EventTouch, captureListeners: any) {
@@ -159,8 +205,10 @@ export class SuperScrollview extends ScrollView {
             Vec2.set(this._touchEndPosition, _tempVec2.x, _tempVec2.y)
         }
         super._onTouchCancelled(event, captureListeners)
+        if (this.isTransmitEvent) {
+            this.transmitEvent(event, Node.EventType.TOUCH_CANCEL)
+        }
     }
-
     protected _processAutoScrolling(dt: number) {
         const isAutoScrollBrake = this._isNecessaryAutoScrollBrake()
         const brakingFactor = isAutoScrollBrake ? OUT_OF_BOUNDARY_BREAKING_FACTOR : 1
@@ -219,9 +267,11 @@ export class SuperScrollview extends ScrollView {
             this._dispatchEvent(ScrollView.EventType.SCROLL_ENDED)
         }
     }
-    scrollToAny(moveDelta: Vec3, timeInSecond?: number, attenuated = true) {
+
+    scrollToAny(moveDelta: Vec3, timeInSecond?: number, attenuated: boolean = true) {
         if (timeInSecond) {
-            this._startAutoScroll(moveDelta, timeInSecond, attenuated !== false)
+
+            this._startAutoScroll(moveDelta, timeInSecond, attenuated)
         } else {
             this._moveContent(moveDelta)
         }
@@ -275,8 +325,6 @@ export class SuperScrollview extends ScrollView {
     }
     protected _updateScrollBar(outOfBoundary: any) {
         super._updateScrollBar(new Vec2(outOfBoundary.x, outOfBoundary.y))
-
-        // console.log(outOfBoundary.y)
         if (this._autoScrollBraking) return // 自动回弹时不计算 （非手动）
         if (!this._autoScrolling) return // 非自动滚动时不计算 
         if (!this.pullRefresh) return
@@ -468,5 +516,12 @@ export class SuperScrollview extends ScrollView {
             return Math.abs(offset.y) >= viewTrans.height * this.layout.scrollThreshold
         }
         return false;
+    }
+    protected transmitEvent(event: EventTouch, eventType: string) {
+        var e = new EventTouch(event.getTouches(), event.bubbles)
+        e.type = eventType
+        e.touch = event.touch
+        let target: any = event.target!
+        target.parent.dispatchEvent(e)
     }
 }
