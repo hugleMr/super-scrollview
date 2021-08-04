@@ -3,7 +3,7 @@
 
 [在线演示效果](https://icipiqkm.github.io/super-scrollview/)
 
-[Cocos论坛地址](http://forum.cocos.org/t/cocos-creator-scrollview-uisuperscrollview/99891)
+[Cocos论坛地址](https://forum.cocos.org/t/topic/118518)
 
 [CocosCreator2.x 旧版在这里](https://github.com/icipiqkm/UISuperScrollview)
 # 说明
