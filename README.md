@@ -1,4 +1,6 @@
-# SuperScrollView optimization for Cocoscreator CC.ScrollView
+# SuperScrollView
+
+# Optimization for Cocoscreator cc.ScrollView
 
 [Online Demonstration Effect] (https://icipiqkm.github.io/super-scrollView/)
 
@@ -25,5 +27,5 @@
 
 # Code is not easy to give a reward at hand to this guy!
 
-<img src = "https://icipiqkm.github.io/photo_2021-08-02_00-42-34.jpg" width = "100">> 100 ">> 100">> 100 ">> 100">> 100 ">
-<img src = "https://icipiqkm.github.io/image/photo_2021-08-02_00-43-03.jpg" width = "100">> 100 ">> 100">
+<img src = "https://icipiqkm.github.io/photo_2021-08-02_00-42-34.jpg" width = "200">
+<img src = "https://icipiqkm.github.io/image/photo_2021-08-02_00-43-03.jpg" width = "200">
