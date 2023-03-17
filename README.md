@@ -1,26 +1,29 @@
+# SuperScrollView optimization for Cocoscreator CC.ScrollView
 
-# SuperScrollView 针对CocosCreator cc.ScrollView做的优化 
+[Online Demonstration Effect] (https://icipiqkm.github.io/super-scrollView/)
 
-[在线演示效果](https://icipiqkm.github.io/super-scrollview/)
+[Cocos forum address] (https://forum.cocos.org/topic/118518)
 
-[Cocos论坛地址](https://forum.cocos.org/t/topic/118518)
+[Cocoscreator2.x Old Edition here] (https://github.com/icipiqkm/UisuperScrollView)
 
-[CocosCreator2.x 旧版在这里](https://github.com/icipiqkm/UISuperScrollview)
-# 说明
+# illustrate
+
 ---
-    整个列表数据的增减刷新都是在使用层去处理的，组件不需要知道你的数据结构是什么
-    无论你对你的数组做了什么样的操作（push，pop ....）
-    或者修改了某个元素的内容时，你只需要告诉组件你有多少条数据即可，
-    也就是 SuperLayout.total这个方法
 
-# 接口
-* SuperLayout.total(length:number) 这个方法就是告诉组件你有多少条数据，每当你增加 删除 或者是你的数组长度没有变化 但是你数组的内容改变了 你都可以调用这个方法来刷新
-* SuperLayout.scrollToHeader 滚动到起始位置
-* SuperLayout.scrollToFooter 滚动到结束位置
-* SuperLayout.scrollToIndex  滚动到指定位置
-* 喜欢的话别忘记点个 Star 谢谢
+    The increase or decrease of the entire list of data is processed by the use layer. The components don’t need to know what your data structure is
+    No matter what you do to your array (push, pop ....)
+    Or when you modify the content of a certain element, you just need to tell the component how many data you have,
+    This is the method of superlayout.total
 
-# 撸码不易 手头宽裕打个赏 谢谢
+# Interface
 
-<img src="https://icipiqkm.github.io/image/photo_2021-08-02_00-42-34.jpg" width="357">
-<img src="https://icipiqkm.github.io/image/photo_2021-08-02_00-43-03.jpg" width="357">
+-   SuperLayout.total (length: Number) This method is to tell the component how many data you have. Whenever you add deletion or your array length has not changed, but the content of your array has changed. You can call this method to refresh this method.
+-   SuperLayout.scrolltoheader rolled to the starting location
+-   SuperLayout.scrolltofooter rolled to the end position
+-   SuperLayout.scrolltoindex rolled to the specified location
+-   If you like it, don't forget to click Star, thank you
+
+# Code is not easy to give a reward at hand to this guy!
+
+<img src = "https://icipiqkm.github.io/photo_2021-08-02_00-42-34.jpg" width = "100">> 100 ">> 100">> 100 ">> 100">> 100 ">
+<img src = "https://icipiqkm.github.io/image/photo_2021-08-02_00-43-03.jpg" width = "100">> 100 ">> 100">
